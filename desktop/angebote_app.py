@@ -41,14 +41,24 @@ logging.basicConfig(
 )
 log = logging.getLogger("angebote")
 
-from kern import (  # noqa: E402
-    MAERKTE,
-    Angebot,
-    Datenbank,
-    Marktguru,
-    MarktguruFehler,
-    pruefe_alarme,
-)
+try:
+    from kern import (  # noqa: E402
+        MAERKTE,
+        Angebot,
+        Datenbank,
+        Marktguru,
+        MarktguruFehler,
+        pruefe_alarme,
+    )
+except Exception:
+    import traceback
+    log.error("kern.py nicht ladbar:\n%s", traceback.format_exc())
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, traceback.format_exc()[-1500:], "Angebote: Fehler", 0x10)
+    except Exception:
+        traceback.print_exc()
+    sys.exit(1)
 
 NUTZER = "desktop"
 APP_NAME = "Angebote"
@@ -223,5 +233,23 @@ def main() -> int:
     return 0
 
 
+def fehler_anzeigen(text: str) -> None:
+    """Zeigt Startfehler als Windows-Meldung, weil pythonw kein Konsolenfenster hat."""
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, text, f"{APP_NAME}: Fehler", 0x10)
+    except Exception:
+        print(text, file=sys.stderr)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except BaseException:
+        import traceback
+        tb = traceback.format_exc()
+        log.error("Absturz:\n%s", tb)
+        fehler_anzeigen(tb[-1500:] + f"\n\nVollständig in: {DATEN_DIR / 'angebote.log'}")
+        sys.exit(1)
