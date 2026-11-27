@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Angebote</title>
+<style>
+  :root {
+    --bg: #14171c; --panel: #1c2027; --panel2: #232831; --rand: #2e3440;
+    --text: #e6e9ef; --dim: #8b93a3; --akzent: #3fb950; --akzent2: #2ea043;
+    --rot: #f85149; --gelb: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.4 "Segoe UI", system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  aside { width: 270px; background: var(--panel); border-right: 1px solid var(--rand);
+          padding: 16px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 8px; }
+  input, button { font: inherit; color: var(--text); }
+  input[type=text] { background: var(--panel2); border: 1px solid var(--rand); border-radius: 6px;
+                     padding: 8px 10px; width: 100%; outline: none; }
+  input[type=text]:focus { border-color: var(--akzent); }
+  button { background: var(--panel2); border: 1px solid var(--rand); border-radius: 6px;
+           padding: 8px 12px; cursor: pointer; }
+  button:hover { border-color: var(--akzent); }
+  button.primaer { background: var(--akzent2); border-color: var(--akzent2); font-weight: 600; }
+  button.primaer:hover { background: var(--akzent); }
+  .maerkte { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 5px 10px; border-radius: 14px; border: 1px solid var(--rand); cursor: pointer;
+          user-select: none; color: var(--dim); font-size: 13px; }
+  .chip.an { background: rgba(63,185,80,.15); border-color: var(--akzent); color: var(--text); }
+  .klein { font-size: 12px; color: var(--dim); }
+  .merk { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+  .merk:hover { background: var(--panel2); }
+  .merk .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .merk .badge { background: var(--akzent2); border-radius: 10px; padding: 0 7px; font-size: 12px; font-weight: 600; }
+  .merk .weg { border: none; background: none; color: var(--dim); padding: 0 4px; }
+  .merk .weg:hover { color: var(--rot); }
+  .suchleiste { display: flex; gap: 8px; padding: 16px; border-bottom: 1px solid var(--rand); background: var(--panel); }
+  .suchleiste #begriff { flex: 1; font-size: 16px; }
+  .suchleiste #maxpreis { width: 110px; }
+  .status { padding: 8px 16px; color: var(--dim); font-size: 13px; min-height: 34px;
+            display: flex; align-items: center; gap: 10px; }
+  .status .fehler { color: var(--rot); }
+  .status button { padding: 4px 10px; font-size: 12px; }
+  #ergebnisse { flex: 1; overflow-y: auto; padding: 0 16px 16px;
+                display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 12px; align-content: start; }
+  .karte { background: var(--panel); border: 1px solid var(--rand); border-radius: 8px;
+           display: flex; flex-direction: column; overflow: hidden; }
+  .karte.neu { border-color: var(--akzent); }
+  .karte .bild { height: 130px; background: #fff; display: flex; align-items: center; justify-content: center; }
+  .karte .bild img { max-width: 100%; max-height: 130px; object-fit: contain; }
+  .karte .inhalt { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .karte .markt { font-size: 12px; color: var(--akzent); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .karte .titel { font-weight: 600; }
+  .karte .preiszeile { display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 6px; }
+  .karte .preis { font-size: 20px; font-weight: 700; }
+  .karte .alt { text-decoration: line-through; color: var(--dim); font-size: 13px; }
+  .karte .gp { color: var(--dim); font-size: 13px; margin-left: auto; }
+  .karte .fuss { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
+  .karte .karte-hinweis { color: var(--gelb); }
+  .leer { grid-column: 1 / -1; text-align: center; color: var(--dim); padding: 60px 0; }
+  .lade { width: 16px; height: 16px; border: 2px solid var(--rand); border-top-color: var(--akzent);
+          border-radius: 50%; animation: dreh .8s linear infinite; }
+  @keyframes dreh { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<aside>
+  <div>
+    <h2>Postleitzahl</h2>
+    <input type="text" id="plz" maxlength="5" inputmode="numeric">
+  </div>
+  <div>
+    <h2>Märkte</h2>
+    <div class="maerkte" id="maerkte"></div>
+  </div>
+  <div style="flex:1">
+    <h2>Merkliste</h2>
+    <div id="merkliste"></div>
+    <div class="klein" id="merkleer">Noch nichts gemerkt. Suchen und dann "Merken" klicken.</div>
+    <button id="pruefen" style="margin-top:10px;width:100%">Merkliste jetzt prüfen</button>
+  </div>
+  <div class="klein">
+    Daten: <a href="#" id="ordner" style="color:var(--dim)">Ordner öffnen</a><br>
+    Quelle: marktguru.de
+  </div>
+</aside>
+
+<main>
+  <div class="suchleiste">
+    <input type="text" id="begriff" placeholder="Was suchst du? z.B. Gefrierbeutel" autofocus>
+    <input type="text" id="maxpreis" placeholder="max. €">
+    <button class="primaer" id="suchen">Suchen</button>
+    <button id="merken" title="Begriff mit Höchstpreis auf die Merkliste">Merken</button>
+  </div>
+  <div class="status" id="status"></div>
+  <div id="ergebnisse"><div class="leer">Suchbegriff eingeben und Enter drücken.</div></div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+let api, zustand = { maerkte: [], alle: [] }, neueTreffer = {};
+
+function esc(t) { const d = document.createElement("div"); d.textContent = t ?? ""; return d.innerHTML; }
+
+function status(text, art = "") {
+  const el = $("#status");
+  el.innerHTML = art === "lade" ? `<div class="lade"></div><span>${esc(text)}</span>`
+               : art === "fehler" ? `<span class="fehler">${esc(text)}</span>`
+               : `<span>${esc(text)}</span>`;
+}
+
+function karteHtml(a, neu) {
+  return `<div class="karte${neu ? " neu" : ""}">
+    <div class="bild"><img src="${esc(a.bild)}" loading="lazy" onerror="this.style.display='none'"></div>
+    <div class="inhalt">
+      <div class="markt">${esc(a.markt)}</div>
+      <div class="titel">${esc(a.titel)}</div>
+      <div class="preiszeile">
+        <span class="preis">${esc(a.preis)}</span>
+        ${a.alter_preis ? `<span class="alt">${esc(a.alter_preis)}</span>` : ""}
+        ${a.grundpreis ? `<span class="gp">${esc(a.grundpreis)}</span>` : ""}
+      </div>
+      <div class="fuss">
+        <span>${esc(a.gueltig)}</span>
+        ${a.karte ? `<span class="karte-hinweis">nur mit App/Karte</span>` : ""}
+      </div>
+    </div></div>`;
+}
+
+function zeigeAngebote(liste, neu = false) {
+  const box = $("#ergebnisse");
+  box.innerHTML = liste.length ? liste.map(a => karteHtml(a, neu)).join("")
+                               : `<div class="leer">Keine aktuellen Angebote in deinen Märkten.</div>`;
+  box.scrollTop = 0;
+}
+
+function zeichneMaerkte() {
+  $("#maerkte").innerHTML = zustand.alle.map(m =>
+    `<span class="chip${zustand.maerkte.includes(m.key) ? " an" : ""}" data-key="${m.key}">${esc(m.name)}</span>`
+  ).join("");
+  document.querySelectorAll(".chip").forEach(c => c.onclick = async () => {
+    const k = c.dataset.key;
+    const neu = zustand.maerkte.includes(k) ? zustand.maerkte.filter(x => x !== k) : [...zustand.maerkte, k];
+    if (!neu.length) { status("Mindestens ein Markt muss an sein.", "fehler"); return; }
+    zustand.maerkte = neu;
+    zeichneMaerkte();
+    await speichern();
+  });
+}
+
+async function speichern() {
+  const r = await api.einstellungen_speichern($("#plz").value.trim(), zustand.maerkte);
+  if (!r.ok) status(r.fehler, "fehler");
+}
+
+async function zeichneMerkliste() {
+  const liste = await api.merkliste();
+  $("#merkleer").style.display = liste.length ? "none" : "block";
+  $("#merkliste").innerHTML = liste.map(m => {
+    const n = (neueTreffer[m.id] || []).length;
+    const grenze = m.max_preis != null ? ` bis ${m.max_preis.toFixed(2).replace(".", ",")} €` : "";
+    return `<div class="merk" data-id="${m.id}" data-begriff="${esc(m.begriff)}">
+      <span class="name">${esc(m.begriff)}<span class="klein">${grenze}</span></span>
+      ${n ? `<span class="badge">${n}</span>` : ""}
+      <button class="weg" title="Entfernen">✕</button></div>`;
+  }).join("");
+  document.querySelectorAll(".merk").forEach(el => {
+    const id = +el.dataset.id;
+    el.onclick = async e => {
+      if (e.target.classList.contains("weg")) {
+        await api.vergessen(id); delete neueTreffer[id]; zeichneMerkliste(); return;
+      }
+      if (neueTreffer[id]?.length) {
+        const liste = neueTreffer[id];
+        zeigeAngebote(liste, true);
+        status(`${liste.length} neue Treffer für "${el.dataset.begriff}". Ab jetzt nicht mehr als neu markiert.`);
+        await api.gesehen(id, liste.map(a => a.id));
+        delete neueTreffer[id];
+        zeichneMerkliste();
+      } else {
+        $("#begriff").value = el.dataset.begriff;
+        suchen();
+      }
+    };
+  });
+}
+
+async function merklistePruefen(still = false) {
+  if (!still) status("Prüfe Merkliste …", "lade");
+  const r = await api.merkliste_pruefen();
+  if (!r.ok) { status(r.fehler, "fehler"); return; }
+  neueTreffer = {};
+  r.treffer.forEach(t => neueTreffer[t.alarm_id] = t.angebote);
+  const summe = r.treffer.reduce((s, t) => s + t.angebote.length, 0);
+  await zeichneMerkliste();
+  if (summe) status(`${summe} neue Treffer auf deiner Merkliste. Eintrag anklicken zum Ansehen.`);
+  else if (!still) status("Keine neuen Treffer auf der Merkliste.");
+}
+
+async function suchen() {
+  const begriff = $("#begriff").value.trim();
+  if (!begriff) return;
+  status(`Suche "${begriff}" …`, "lade");
+  const r = await api.suche(begriff, $("#maxpreis").value.trim());
+  if (!r.ok) { status(r.fehler, "fehler"); return; }
+  zeigeAngebote(r.angebote);
+  status(`${r.angebote.length} Angebote für "${begriff}", sortiert nach Grundpreis.`);
+}
+
+async function merken() {
+  const begriff = $("#begriff").value.trim();
+  if (!begriff) { status("Erst einen Suchbegriff eingeben.", "fehler"); return; }
+  const r = await api.merken(begriff, $("#maxpreis").value.trim());
+  if (!r.ok) { status(r.fehler, "fehler"); return; }
+  status(`"${begriff}" gemerkt.`);
+  await zeichneMerkliste();
+}
+
+window.addEventListener("pywebviewready", async () => {
+  api = window.pywebview.api;
+  const s = await api.start();
+  zustand.maerkte = s.maerkte; zustand.alle = s.alle_maerkte;
+  $("#plz").value = s.plz;
+  zeichneMaerkte();
+  await zeichneMerkliste();
+  $("#suchen").onclick = suchen;
+  $("#merken").onclick = merken;
+  $("#pruefen").onclick = () => merklistePruefen(false);
+  $("#ordner").onclick = e => { e.preventDefault(); api.datenordner_oeffnen(); };
+  $("#begriff").addEventListener("keydown", e => { if (e.key === "Enter") suchen(); });
+  $("#maxpreis").addEventListener("keydown", e => { if (e.key === "Enter") suchen(); });
+  $("#plz").addEventListener("change", async () => {
+    if (!/^\d{5}$/.test($("#plz").value.trim())) { status("PLZ muss fünfstellig sein.", "fehler"); return; }
+    await speichern(); status("PLZ gespeichert.");
+  });
+  merklistePruefen(true);
+});
+</script>
+</body>
+</html>

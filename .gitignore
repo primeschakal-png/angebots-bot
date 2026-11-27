@@ -5,3 +5,8 @@ __pycache__/
 *.db-wal
 *.db-shm
 angebots-bot.service.lokal
+desktop/daten/
+desktop/.venv/
+desktop/build/
+desktop/dist/
+desktop/*.spec
