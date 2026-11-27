@@ -86,6 +86,8 @@ def main() -> int:
             n = db.nutzer(args.user)
             for un, name in mg.haendler(" ".join(args.begriff), args.plz or n["plz"]).items():
                 print(f"{un:35} {name}")
+            for st in mg.letzte_statistik:
+                print(f"# Seite ab {st['offset']}: {st['geliefert']} Angebote, totalResults={st['totalResults']}")
             return 0
     except MarktguruFehler as ex:
         print(f"Fehler bei Marktguru: {ex}", file=sys.stderr)

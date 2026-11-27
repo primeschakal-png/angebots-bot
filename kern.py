@@ -135,6 +135,8 @@ class Angebot:
     def grundpreis_text(self) -> str:
         if self.grundpreis is None:
             return ""
+        if self.preis is not None and abs(self.grundpreis - self.preis) < 0.005 and self.einheit.lower() in ("stk", "stück", "st"):
+            return ""
         return f"{euro(self.grundpreis)}/{self.einheit}" if self.einheit else euro(self.grundpreis)
 
     @property
@@ -210,6 +212,7 @@ class Marktguru:
         if os.environ.get("MARKTGURU_APIKEY") and os.environ.get("MARKTGURU_CLIENTKEY"):
             self._keys = (os.environ["MARKTGURU_APIKEY"], os.environ["MARKTGURU_CLIENTKEY"])
         self._cache: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+        self.letzte_statistik: list[dict] = []
 
     # -- Schlüssel ---------------------------------------------------------
     def _hole_keys(self) -> tuple[str, str]:
@@ -252,11 +255,13 @@ class Marktguru:
 
         ergebnisse: list[dict] = []
         offset = 0
+        self.letzte_statistik = []
         for _ in range(5):  # max. 5 Seiten
             daten = self._anfrage(begriff, plz, limit, offset)
             seite = daten.get("results") or []
             ergebnisse.extend(seite)
             gesamt = daten.get("totalResults") or len(ergebnisse)
+            self.letzte_statistik.append({"offset": offset, "geliefert": len(seite), "totalResults": daten.get("totalResults")})
             offset += len(seite)
             if not seite or offset >= gesamt:
                 break
@@ -314,8 +319,7 @@ class Marktguru:
                 continue
             gesehen.add(a.id)
             ergebnis.append(a)
-        ergebnis.sort(key=_sortierschluessel)
-        return ergebnis
+        return sortiere(ergebnis)
 
     def haendler(self, begriff: str, plz: str) -> dict[str, str]:
         """Alle Händler (uniqueName -> Name), die zu einem Suchbegriff auftauchen. Zur Fehlersuche."""
@@ -356,7 +360,10 @@ def _baue_angebot(o: dict) -> Angebot | None:
             key = k
             break
     brand = (o.get("brand") or {}).get("name") or ""
+    if re.match(r"(?i)thisisnobrand|no.?brand|keine marke", brand):
+        brand = ""
     produkt = (o.get("product") or {}).get("name") or ""
+    produkt = re.sub(r"(?i)\bthisisnobrand\w*\s*", "", produkt).strip()
     titel = produkt if brand and brand.lower() in produkt.lower() else f"{brand} {produkt}".strip()
     von = [_datum(v.get("from")) for v in o.get("validityDates") or []]
     bis = [_datum(v.get("to")) for v in o.get("validityDates") or []]
@@ -387,11 +394,21 @@ def _zahl(w) -> float | None:
         return None
 
 
-def _sortierschluessel(a: Angebot):
-    # Erst nach Grundpreis innerhalb gleicher Einheit, Angebote ohne Grundpreis nach hinten
-    if a.grundpreis is not None and a.grundpreis > 0:
-        return (0, a.einheit, a.grundpreis, a.preis or 0)
-    return (1, "", a.preis if a.preis is not None else 9999, 0)
+def sortiere(angebote: list[Angebot]) -> list[Angebot]:
+    """Gruppiert nach Grundpreis-Einheit, die häufigste Einheit zuerst (bei 'Kaffee' also kg,
+    nicht Stk), innerhalb der Gruppe nach Grundpreis. Ohne Grundpreis nach Preis ans Ende."""
+    haeufigkeit: dict[str, int] = {}
+    for a in angebote:
+        if a.grundpreis:
+            haeufigkeit[a.einheit.lower()] = haeufigkeit.get(a.einheit.lower(), 0) + 1
+    rang = {e: i for i, (e, _) in enumerate(sorted(haeufigkeit.items(), key=lambda x: -x[1]))}
+
+    def schluessel(a: Angebot):
+        if a.grundpreis:
+            return (rang[a.einheit.lower()], a.grundpreis, a.preis or 0)
+        return (len(rang), a.preis if a.preis is not None else 9999, 0)
+
+    return sorted(angebote, key=schluessel)
 
 
 # ---------------------------------------------------------------------------
