@@ -56,7 +56,10 @@ STANDARD_MAERKTE = [
     m.strip() for m in os.environ.get("STANDARD_MAERKTE", ",".join(MAERKTE)).split(",") if m.strip()
 ]
 DB_PFAD = Path(os.environ.get("DB_PFAD", str(BASIS / "angebote.db")))
-ZEITZONE = ZoneInfo(os.environ.get("ZEITZONE", "Europe/Berlin"))
+try:
+    ZEITZONE = ZoneInfo(os.environ.get("ZEITZONE", "Europe/Berlin"))
+except Exception:  # Windows ohne Paket tzdata: Ortszeit des Rechners nehmen
+    ZEITZONE = None
 CACHE_SEKUNDEN = int(os.environ.get("CACHE_SEKUNDEN", "1800"))
 
 USER_AGENT = (
